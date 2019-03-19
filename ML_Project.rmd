@@ -1,0 +1,103 @@
+
+
+# Practical Machine Learning Project - Coursera 
+
+###Health and fitness, optimal BMI through physical activity has got almost all of our attention. The world is moving towards long healthy life. Incidentally computer hardware has become cheapter coupled with statistical tool has given a great oppurtunity to get lot better in these areas of health. Wearables are leading the way. In this project, the goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+
+##set working directory and load packages
+```{r}
+library(caret)
+library(randomForest)
+library(rattle)
+```
+
+##Load Data
+```{r}
+trainData <- read.csv("pml-training.csv")
+testData <- read.csv("pml-testing.csv")
+```
+
+##Clean up NA values
+```{r}
+indColToRemove <- which(colSums(is.na(trainData) |trainData=="")>0.9*dim(trainData)[1]) 
+trainData <- trainData[,-indColToRemove]
+trainData <- trainData[,-c(1:7)]
+dim(trainData)
+
+
+indColToRemove <- which(colSums(is.na(testData) |testData=="")>0.9*dim(testData)[1]) 
+testData <- testData[,-indColToRemove]
+testData <- testData[,-1]
+dim(testData)
+
+set.seed(1000)
+inTrain1 <- createDataPartition(trainData$classe, p=0.75, list=FALSE)
+Train1 <- trainData[inTrain1,]
+Test1 <- trainData[-inTrain1,]
+dim(Train1)
+dim(Test1)
+```
+
+##cross-validation technique. We will use 5 folds 
+```{r}
+tc <- trainControl(method="cv", number=5)
+```
+
+
+##Classification tree
+```{r}
+model_CTree <- train(classe~., data=Train1, method="rpart", trControl=tc)
+
+fancyRpartPlot(model_CTree$finalModel)
+
+trainpred <- predict(model_CTree,newdata=Test1)
+confMatCT <- confusionMatrix(Test1$classe,trainpred)
+```
+
+#display confusion matrix and model accuracy
+```{r}
+confMatCT$table
+confMatCT$overall[1]
+```
+
+###The accuracy of this Classification tree model 55% therefore will move to more accurte random forest method.
+
+
+##Random Forest
+###randomForest function runs much faster compared to train method save lot of time.
+```{r}
+model_fitRF <- randomForest(classe~., data=Train1, verbose=FALSE)
+
+print(model_fitRF)
+
+trainpredict <- predict(model_fitRF,newdata=Test1)
+
+RF_confusionMatrix <- confusionMatrix(Test1$classe,trainpredict)
+```
+
+# display confusion matrix and model accuracy
+```{r}
+RF_confusionMatrix$table
+
+RF_confusionMatrix$overall
+
+model_fitRF$classes
+
+
+plot(model_fitRF)
+
+plot(RF_confusionMatrix$table, col = RF_confusionMatrix$byClass, main = paste("Random Forest Confusion Matrix: Accuracy =", round(RF_confusionMatrix$overall['Accuracy'], 4)))
+
+
+predictionFinal <- predict(model_fitRF, testData, type = "class")
+print(predictionFinal)
+```
+
+##Conclusion
+###The random forest model has proved to be the best one with 99% accuracy.
+
+
+
+
+
